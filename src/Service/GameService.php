@@ -262,6 +262,12 @@ class GameService
 
         foreach ($teams as $team1) {
             foreach ($teams as $team2) {
+
+                // Ensure teams are from the same division
+                if ($team1->getDivision() !== $team2->getDivision()) {
+                    throw new \RuntimeException('Teams from different divisions cannot play in qualifying matches.');
+                }
+
                 if ($team1 !== $team2 && !$this->hasMatchBeenPlayed($playedMatches, $team1, $team2)) {
                     $winner = $this->simulateMatch($team1, $team2);
                     $game = $this->createGame($tournament, $team1, $team2, 'qualifying', $winner);

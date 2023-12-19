@@ -30,14 +30,33 @@ class GameServiceTest extends KernelTestCase
 
     public function testPlayQualifyingMatches()
     {
+        // Assuming there's an existing tournament in the database
         $tournamentName = $this->gameService->startNewTournament();
         $tournament = $this->gameService->checkTournament($tournamentName);
 
-        $teams = $this->entityManager->getRepository(App\Entity\Team::class)->findAll();
+        // Test tournament with teams from the same division
+        $teamsSameDivision = $this->entityManager->getRepository(App\Entity\Team::class)->findBy(['division' => 1]);
+        $matchResultsSameDivision = $this->gameService->playQualifyingMatches($teamsSameDivision, $tournament);
+        $this->assertNotEmpty($matchResultsSameDivision);
 
-        $matchResults = $this->gameService->playQualifyingMatches($teams, $tournament);
+        // Test tournament with teams from different divisions
+        $teamsDifferentDivisions = $this->entityManager->getRepository(App\Entity\Team::class)->findAll();
 
-        $this->assertNotEmpty($matchResults);
+        $exceptionThrown = false;
+        $exceptionMessage = '';
+
+        try {
+            $this->gameService->playQualifyingMatches($teamsDifferentDivisions, $tournament);
+        } catch (\Exception $exception) {
+            $exceptionThrown = true;
+            $exceptionMessage = $exception->getMessage();
+        }
+
+        $this->assertTrue($exceptionThrown, 'Expected exception was not thrown.');
+        $this->assertStringContainsString(
+            'Teams from different divisions cannot play in qualifying matches.',
+            $exceptionMessage
+        );
     }
 
     public function testCheckTournament()
