@@ -1,0 +1,13 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Match Results</title>
+</head>
+<body>
+    <h1>Match Results</h1>
+    <ul>
+        {% for matchResult in matchResults %}
+            <li>{{ matchResult.team1 }} vs {{ matchResult.team2 }}: {{ matchResult.winner.getName() }}</li>
+        {% endfor %}
+    </ul>
+</body>
