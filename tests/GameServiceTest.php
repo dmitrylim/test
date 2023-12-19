@@ -42,21 +42,10 @@ class GameServiceTest extends KernelTestCase
         // Test tournament with teams from different divisions
         $teamsDifferentDivisions = $this->entityManager->getRepository(App\Entity\Team::class)->findAll();
 
-        $exceptionThrown = false;
-        $exceptionMessage = '';
+        $this->expectException(\Exception::class);
+        $this->expectExceptionMessage('Teams from different divisions cannot play in qualifying matches.');
 
-        try {
-            $this->gameService->playQualifyingMatches($teamsDifferentDivisions, $tournament);
-        } catch (\Exception $exception) {
-            $exceptionThrown = true;
-            $exceptionMessage = $exception->getMessage();
-        }
-
-        $this->assertTrue($exceptionThrown, 'Expected exception was not thrown.');
-        $this->assertStringContainsString(
-            'Teams from different divisions cannot play in qualifying matches.',
-            $exceptionMessage
-        );
+        $this->gameService->playQualifyingMatches($teamsDifferentDivisions, $tournament);
     }
 
     public function testCheckTournament()
