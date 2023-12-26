@@ -13,14 +13,17 @@ use Symfony\Component\Routing\Annotation\Route;
 
 use Symfony\Component\HttpFoundation\JsonResponse;
 use App\Service\GameService;
+use App\Service\TournamentService;
 
 class IndexController extends AbstractController
 {
     private GameService $gameService;
+    private TournamentService $tournamentService;
 
-    public function __construct(GameService $gameService)
+    public function __construct(GameService $gameService, TournamentService $tournamentService)
     {
         $this->gameService = $gameService;
+        $this->tournamentService = $tournamentService;
     }
 
     #[Route('/', name: 'app_index')]
@@ -44,7 +47,7 @@ class IndexController extends AbstractController
     {
         if ($request->isXmlHttpRequest() || $request->query->get('showJson') == 1) {
 
-            $tournamentName = $this->gameService->startNewTournament();
+            $tournamentName = $this->tournamentService->startNewTournament();
 
             return new JsonResponse(array(
                 'code' => 200,
@@ -67,7 +70,7 @@ class IndexController extends AbstractController
 
             $tournamentName = $request->query->get('tournament');
 
-            $tournament = $this->gameService->getTournament($tournamentName);
+            $tournament = $this->tournamentService->getTournament($tournamentName);
 
             if($tournament) {
                 return new JsonResponse(array(
@@ -97,7 +100,7 @@ class IndexController extends AbstractController
     {
         if ($this->isAjaxRequest($request) || $request->query->get('showJson') == 1) {
             $tournamentName = $request->query->get('tournament');
-            $tournament = $this->gameService->checkTournament($tournamentName);
+            $tournament = $this->tournamentService->checkTournament($tournamentName);
 
             if (!$tournament) {
                 return $this->jsonResponse([
@@ -108,6 +111,7 @@ class IndexController extends AbstractController
             }
 
             $divisionType = $request->query->get('type');
+            
             if ($this->gamesExist($tournament, $divisionType)) {
                 return $this->jsonResponse([
                     'code' => 200,
@@ -161,7 +165,7 @@ class IndexController extends AbstractController
     {
         if ($this->isAjaxRequest($request) || $request->query->get('showJson') == 1) {
             $tournamentName = $request->query->get('tournament');
-            $tournament = $this->gameService->checkTournament($tournamentName);
+            $tournament = $this->tournamentService->checkTournament($tournamentName);
 
             if (!$tournament) {
                 return $this->jsonResponse([
