@@ -317,98 +317,110 @@ class GameService
         $teamsA = $this->qualifyingScoreRepository->findTopTeamsByTournamentAndDivision($tournament->getId(), 1);
         $teamsB = $this->qualifyingScoreRepository->findTopTeamsByTournamentAndDivision($tournament->getId(), 2);
 
-        // Check if there are teams in $teamsA and $teamsB
-        if (!empty($teamsA) && !empty($teamsB)) {
-            $count = count($teamsA);
-            $gameResults = [];
-
-            // Quarter
-            for ($i = 0; $i < $count; $i++) {
-                $team1 = $teamsA[$i]->getTeam();
-                $team2 = $teamsB[$count - $i - 1]->getTeam();
-
-                $winner = $this->simulateMatch($team1, $team2);
-
-                $game = $this->createGame($tournament, $team1, $team2, 'quarterFinal', $winner);
-
-                $gameResults['quarterFinal'][] = [
-                    'team1' => $team1->getName(),
-                    'team2' => $team2->getName(),
-                    'winner' => $winner->getName(),
-                ];
-
-                $winners['quarterFinal'][] = $winner;
-
-                $this->entityManager->persist($game);
-            }
-
-            // Semi-final
-
-            $losers = [];
-
-            for ($i = 0; $i < count($winners['quarterFinal']); $i += 2) {
-                $team1 = $winners['quarterFinal'][$i];
-                $team2 = $winners['quarterFinal'][$i + 1];
-
-                $winner = $this->simulateMatch($team1, $team2);
-                $loser = $winner === $team1 ? $team2 : $team1;
-
-                $gameResults['semiFinal'][] = [
-                    'team1' => $team1->getName(),
-                    'team2' => $team2->getName(),
-                    'winner' => $winner->getName(),
-                ];
-
-                $game = $this->createGame($tournament, $team1, $team2, 'semiFinal', $winner);
-
-                $winners['semiFinal'][] = $winner; 
-                $losers['semiFinal'][] = $loser; 
-
-                $this->entityManager->persist($game);
-            }
-
-            // Play the first final match
-            $team1 = $winners['semiFinal'][0];
-            $team2 = $winners['semiFinal'][1];
-            $winner1 = $this->simulateMatch($team1, $team2);
-
-            $gameResults['final'][] = [
-                'team1' => $team1->getName(),
-                'team2' => $team2->getName(),
-                'winner' => $winner1->getName(),
-            ];
-
-            $loser1 = $winner1 === $team1 ? $team2 : $team1;
-            $game1 = $this->createGame($tournament, $team1, $team2, 'final', $winner1);
-
-            // Play the second final match
-
-            $team3 = $losers['semiFinal'][0];
-            $team4 = $losers['semiFinal'][1];
-            $winner2 = $this->simulateMatch($team3, $team4);
-
-            $gameResults['final'][] = [
-                'team1' => $team3->getName(),
-                'team2' => $team4->getName(),
-                'winner' => $winner2->getName(),
-            ];
-
-            $loser2 = $winner2 === $team3 ? $team4 : $team3;
-            $game2 = $this->createGame($tournament, $team3, $team4, 'final', $winner2);
-
-            $tournament->setStatus('finished');
-
-            // Persist the games
-            $this->entityManager->persist($game1);
-            $this->entityManager->persist($game2);
-            $this->entityManager->persist($tournament);
-
-            $this->entityManager->flush();
-
-            $gameResults['tournamentResults'] = [$winner1->getName(), $loser1->getName(), $winner2->getName(), $loser2->getName()];
-
-            return $gameResults;
+        if (empty($teamsA) || empty($teamsB)) {
+            return []; // Early return if there are no teams
         }
+
+        $gameResults = [
+            'quarterFinal' => $this->playStageMatches($teamsA, $teamsB, 'quarterFinal', $tournament),
+            'semiFinal' => [],
+            'final' => []
+        ];
+
+        // Semi-final
+        $semiFinalists = $this->getWinners($gameResults['quarterFinal']);
+        for ($i = 0; $i < count($semiFinalists); $i += 2) {
+            $gameResult = $this->playMatch($semiFinalists[$i], $semiFinalists[$i + 1], 'semiFinal', $tournament);
+            $gameResults['semiFinal'][] = $gameResult;
+        }
+
+        // Final
+        $finalists = $this->getWinners($gameResults['semiFinal']);
+        $gameResults['final'][] = $this->playMatch($finalists[0], $finalists[1], 'final', $tournament);
+
+        $thirdPlaceFinalists = $this->getLosers($gameResults['semiFinal']);
+        $gameResults['final'][] = $this->playMatch($thirdPlaceFinalists[0], $thirdPlaceFinalists[1], 'final', $tournament);
+
+        $tournament->setStatus('finished');
+        $this->entityManager->persist($tournament);
+        $this->entityManager->flush();
+
+        $gameResults['tournamentResults'] = $this->getFinalResults($gameResults['final']);
+
+        $readableGameResults = $this->getReadableResults($gameResults);
+
+        return $readableGameResults;
+    }
+
+    private function playStageMatches(array $teamsA, array $teamsB, string $stage, $tournament): array
+    {
+        $results = [];
+        $count = count($teamsA);
+        for ($i = 0; $i < $count; $i++) {
+            $team1 = $teamsA[$i]->getTeam();
+            $team2 = $teamsB[$count - $i - 1]->getTeam();
+
+            $results[] = $this->playMatch($team1, $team2, $stage, $tournament);
+        }
+        return $results;
+    }
+
+    private function playMatch(Team $team1, Team $team2, string $stage, Tournament $tournament): array
+    {
+        $winner = $this->simulateMatch($team1, $team2);
+        $game = $this->createGame($tournament, $team1, $team2, $stage, $winner);
+        $this->entityManager->persist($game);
+
+        return [
+            'team1' => $team1,
+            'team2' => $team2,
+            'winner' => $winner
+        ];
+    }
+
+    private function getWinners(array $matches): array
+    {
+        return array_map(fn($match) => $match['winner'], $matches);
+    }
+
+    private function getLosers(array $matches): array
+    {
+        return array_map(fn($match) => $match['winner'] === $match['team1'] ? $match['team2'] : $match['team1'], $matches);
+    }
+
+    private function getFinalResults(array $finalMatches): array
+    {
+        $winners = $this->getWinners($finalMatches);
+        $losers = $this->getLosers($finalMatches);
+
+        $finalResults = [];
+
+        for ($i = 0; $i < count($winners); $i++) {
+            $finalResults[] = $winners[$i];
+            $finalResults[] = $losers[$i];
+        }
+
+        return $finalResults;
+    }
+
+    private function getReadableResults($gameResults): array
+    {   $readableGameResults = [];
+        
+        $rounds = ['quarterFinal', 'semiFinal', 'final'];
+
+        foreach ($rounds as $roundKey) {
+            foreach ($gameResults[$roundKey] as $matchKey => $match) {
+                $readableGameResults[$roundKey][$matchKey]['team1'] = $match['team1']->getName();
+                $readableGameResults[$roundKey][$matchKey]['team2'] = $match['team2']->getName();
+                $readableGameResults[$roundKey][$matchKey]['winner'] = $match['winner']->getName();
+            }
+        }
+
+        $readableGameResults['tournamentResults'] = array_map(function ($result) {
+            return $result->getName();
+        }, $gameResults['tournamentResults']);
+
+        return $readableGameResults;
     }
 
     public function createGame(Tournament $tournament, $team1, $team2, $stage, $winner)
