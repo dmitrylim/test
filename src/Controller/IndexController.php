@@ -120,14 +120,15 @@ class IndexController extends AbstractController
                 ]);
             }
 
-            $divisionType = $request->query->get('type');
-            if ($divisionType == 1) {
-                $teams = $this->getDoctrine()->getRepository(Team::class)->findBy(['division' => 1]);
-                $matchResults['a'] = $this->gameService->playQualifyingMatches($teams, $tournament);
-            }
-            else if ($divisionType == 2) {
-                $teams = $this->getDoctrine()->getRepository(Team::class)->findBy(['division' => 2]);
-                $matchResults['b'] = $this->gameService->playQualifyingMatches($teams, $tournament);
+            if ($divisionType == "a" || $divisionType == "b") {
+                $teams = $this->gameService->getTeamsByDivision($divisionType, $tournament);
+                $matchResults[$divisionType] = $this->gameService->playQualifyingMatches($teams, $tournament);
+            } else {
+                return $this->jsonResponse([
+                    'code' => 200,
+                    'error' => 'yes',
+                    'message' => 'Invalid division type',
+                ]);
             }
 
             return $this->jsonResponse([
@@ -165,7 +166,7 @@ class IndexController extends AbstractController
                 ]);
             }
 
-            if (!$this->gameService->gamesExist($tournament, 1) || !$this->gameService->gamesExist($tournament, 2)) {
+            if (!$this->gameService->gamesExist($tournament, 'a') || !$this->gameService->gamesExist($tournament, 'b')) {
                 return $this->jsonResponse([
                     'code' => 200,
                     'error' => 'yes',

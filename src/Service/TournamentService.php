@@ -153,7 +153,7 @@ class TournamentService
     private function processQualifyingGame(Game $game, array &$gameResults): void
     {
         $division = $game->getTeam1()->getDivision()->getName();
-        $stageResults = &$gameResults['qualifying'][strtolower($division)];
+        $stageResults = &$gameResults['qualifying'][$division];
 
         $stageResults[] = [
             'team1' => $game->getTeam1()->getName(),

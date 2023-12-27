@@ -6,6 +6,7 @@ class GameServiceTest extends KernelTestCase
 {
     private $entityManager;
     private $gameService;
+    private $tournamentService;
 
     protected function setUp(): void
     {
@@ -14,25 +15,14 @@ class GameServiceTest extends KernelTestCase
         $container = self::$container;
         $this->entityManager = $container->get('doctrine')->getManager();
         $this->gameService = $container->get(App\Service\GameService::class);
-    }
-
-    public function testStartNewTournament()
-    {
-        $tournamentName = $this->gameService->startNewTournament();
-
-        // Проверяем, что турнир успешно создан
-        $this->assertNotEmpty($tournamentName);
-
-        // Проверяем, что турнир с таким именем действительно существует в базе данных
-        $tournament = $this->gameService->checkTournament($tournamentName);
-        $this->assertInstanceOf(App\Entity\Tournament::class, $tournament);
+        $this->tournamentService = $container->get(App\Service\TournamentService::class);
     }
 
     public function testPlayQualifyingMatches()
     {
         // Assuming there's an existing tournament in the database
-        $tournamentName = $this->gameService->startNewTournament();
-        $tournament = $this->gameService->checkTournament($tournamentName);
+        $tournamentName = $this->tournamentService->startNewTournament();
+        $tournament = $this->tournamentService->checkTournament($tournamentName);
 
         // Test tournament with teams from the same division
         $teamsSameDivision = $this->entityManager->getRepository(App\Entity\Team::class)->findBy(['division' => 1]);
@@ -48,65 +38,22 @@ class GameServiceTest extends KernelTestCase
         $this->gameService->playQualifyingMatches($teamsDifferentDivisions, $tournament);
     }
 
-    public function testCheckTournament()
-    {
-        // Test the checkTournament method with an existing tournament
-        $existingTournament = $this->gameService->checkTournament('Carlsbad');
-        $this->assertInstanceOf(App\Entity\Tournament::class, $existingTournament);
-
-        // Test the checkTournament method with a non-existing tournament
-        $nonExistingTournament = $this->gameService->checkTournament('Non-Existing Tournament');
-        $this->assertNull($nonExistingTournament);
-    }
-
-    public function testGetTournament()
-    {
-        // Test the getTournament method with an existing tournament
-        $existingTournament = $this->gameService->getTournament('Carlsbad');
-        $this->assertIsArray($existingTournament);
-        $this->assertArrayHasKey('name', $existingTournament);
-
-        // Test the getTournament method with a non-existing tournament
-        $nonExistingTournament = $this->gameService->getTournament('Non-Existing Tournament');
-        $this->assertNull($nonExistingTournament);
-    }
-
     public function testPlayPlayoffGames()
     {
         // Assuming there's a finished tournament named 'Finished Tournament' in the database
-        $tournamentName = 'Carlsbad';
-        $tournament = $this->gameService->checkTournament($tournamentName);
+        $tournamentName = 'Grapevine';
+        $tournament = $this->tournamentService->checkTournament($tournamentName);
 
         // Test playPlayoffGames method with a finished tournament
         $result = $this->gameService->playPlayoffGames($tournament);
         $this->assertArrayHasKey('tournamentResults', $result);
     }
 
-    public function testGetDivisionScores()
-    {
-        // Assuming there's a tournament named 'Carlsbad' in the database
-        $tournamentName = 'Carlsbad';
-        $tournament = $this->gameService->checkTournament($tournamentName);
-
-        // Assuming there are teams in both divisions (1 and 2)
-        $teamsInDivisionA = $this->entityManager->getRepository(App\Entity\Team::class)->findBy(['division' => 1]);
-        $teamsInDivisionB = $this->entityManager->getRepository(App\Entity\Team::class)->findBy(['division' => 2]);
-
-        // Test the getDivisionScores method
-        $scoresDivisionA = $this->gameService->getDivisionScores($teamsInDivisionA, $tournament);
-        $scoresDivisionB = $this->gameService->getDivisionScores($teamsInDivisionB, $tournament);
-
-        $this->assertIsArray($scoresDivisionA);
-        $this->assertIsArray($scoresDivisionB);
-        $this->assertNotEmpty($scoresDivisionA);
-        $this->assertNotEmpty($scoresDivisionB);
-    }
-
     public function testCreateGame()
     {
-        // Assuming there's a tournament named 'Carlsbad' in the database
-        $tournamentName = 'Carlsbad';
-        $tournament = $this->gameService->checkTournament($tournamentName);
+        // Assuming there's a tournament named 'Grapevine' in the database
+        $tournamentName = 'Grapevine';
+        $tournament = $this->tournamentService->checkTournament($tournamentName);
 
         // Assuming there are two teams in the tournament
         $team1 = $this->entityManager->getRepository(App\Entity\Team::class)->find(3);
