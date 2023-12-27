@@ -63,14 +63,14 @@ class IndexController extends AbstractController
         }
     }
 
-    #[Route('/get-tournament', name: 'app_get_tournament')]
-    public function getTournament(Request $request)
+    #[Route('/get-tournament-info', name: 'app_get_tournament_info')]
+    public function getTournamentInfo(Request $request)
     {
         if ($request->isXmlHttpRequest() || $request->query->get('showJson') == 1) {
 
             $tournamentName = $request->query->get('tournament');
 
-            $tournament = $this->tournamentService->getTournament($tournamentName);
+            $tournament = $this->tournamentService->getTournamentInfo($tournamentName);
 
             if($tournament) {
                 return new JsonResponse(array(
@@ -111,7 +111,7 @@ class IndexController extends AbstractController
             }
 
             $divisionType = $request->query->get('type');
-            
+
             if ($this->gamesExist($tournament, $divisionType)) {
                 return $this->jsonResponse([
                     'code' => 200,

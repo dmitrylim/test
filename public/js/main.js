@@ -7,7 +7,7 @@ document.addEventListener('DOMContentLoaded', function() {
         startNewTournament();
     }
     else {
-        getTournament();
+        getTournamentInfo();
     }
 });
 
@@ -30,11 +30,11 @@ function startNewTournament() {
     });
 }
 
-function getTournament() {
+function getTournamentInfo() {
     var tournament = localStorage.getItem('tournament');
     $.ajax({
         type: 'GET',
-        url: '/get-tournament',
+        url: '/get-tournament-info',
         data: { tournament: tournament },
         dataType: 'json',
         success: function (data) {

@@ -68,7 +68,7 @@ class TournamentService
         return $tournament;
     }
 
-    public function getTournament($name)
+    public function getTournamentInfo($name)
     {
         $tournament = $this->tournamentRepository->findOneBy(['name' => $name]);
 
