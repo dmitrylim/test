@@ -112,7 +112,7 @@ class IndexController extends AbstractController
 
             $divisionType = $request->query->get('type');
 
-            if ($this->gamesExist($tournament, $divisionType)) {
+            if ($this->gameService->gamesExist($tournament, $divisionType)) {
                 return $this->jsonResponse([
                     'code' => 200,
                     'error' => 'yes',
@@ -142,24 +142,6 @@ class IndexController extends AbstractController
         ]);
     }
 
-    /**
-     * Check if games for the specified tournament and division already exist.
-     */
-    private function gamesExist(Tournament $tournament, int $divisionType): bool
-    {
-        $existingGames = $this->getDoctrine()->getRepository(Game::class)->createQueryBuilder('g')
-            ->join('g.team1', 't1')
-            ->join('g.team2', 't2')
-            ->andWhere('g.tournament = :tournament')
-            ->andWhere('t1.division = :division OR t2.division = :division')
-            ->setParameter('tournament', $tournament)
-            ->setParameter('division', $divisionType)
-            ->getQuery()
-            ->getResult();
-
-        return !empty($existingGames);
-    }
-
     #[Route('/generate-playoff', name: 'app_generate_playoff')]
     public function generatePlayoff(Request $request): Response
     {
@@ -183,7 +165,7 @@ class IndexController extends AbstractController
                 ]);
             }
 
-            if (!$this->gamesExist($tournament, 1) || !$this->gamesExist($tournament, 2)) {
+            if (!$this->gameService->gamesExist($tournament, 1) || !$this->gameService->gamesExist($tournament, 2)) {
                 return $this->jsonResponse([
                     'code' => 200,
                     'error' => 'yes',

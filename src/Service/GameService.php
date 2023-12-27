@@ -207,4 +207,22 @@ class GameService
 
         return $winner;
     }
+
+    /**
+     * Check if games for the specified tournament and division already exist.
+     */
+    public function gamesExist(Tournament $tournament, int $divisionType): bool
+    {
+        $existingGames = $this->entityManager->getRepository(Game::class)->createQueryBuilder('g')
+            ->join('g.team1', 't1')
+            ->join('g.team2', 't2')
+            ->andWhere('g.tournament = :tournament')
+            ->andWhere('t1.division = :division OR t2.division = :division')
+            ->setParameter('tournament', $tournament)
+            ->setParameter('division', $divisionType)
+            ->getQuery()
+            ->getResult();
+
+        return !empty($existingGames);
+    }
 }
