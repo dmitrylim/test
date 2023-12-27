@@ -94,18 +94,18 @@ class CityService
         return $randomCity;
     }
 
-    private function getRandomCity(): string
+    public function getRandomCity(): string
     {
         // Get a random city from the array
         $randomIndex = array_rand($this->cities);
         return $this->cities[$randomIndex];
     }
 
-    private function isCityUnique(string $city): bool
+    public function isCityUnique(string $city): bool
     {
         // Check if the city already exists in the database
-        $existingTeam = $this->tournamentRepository->findOneBy(['name' => $city]);
+        $existingCity = $this->tournamentRepository->findOneBy(['name' => $city]);
 
-        return $existingTeam === null;
+        return $existingCity === null;
     }
 }
