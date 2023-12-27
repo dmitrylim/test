@@ -1,13 +1,18 @@
 <?php
 
+require_once __DIR__ . '/WinnerAssertionTrait.php';
+
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
 
 class TournamentServiceTest extends KernelTestCase
 {
+    use WinnerAssertionTrait;
+
     private $entityManager;
     private $tournamentService;
     private $qualifyingScoreRepository;
     private $teamRepository;
+    private $tournamentRepository;
 
     protected function setUp(): void
     {
@@ -18,6 +23,7 @@ class TournamentServiceTest extends KernelTestCase
         $this->tournamentService = $container->get(App\Service\TournamentService::class);
         $this->qualifyingScoreRepository = $container->get(App\Repository\QualifyingScoreRepository::class);
         $this->teamRepository = $container->get(App\Repository\TeamRepository::class);
+        $this->tournamentRepository = $container->get(App\Repository\TournamentRepository::class);
     }
 
     public function testStartNewTournament()
@@ -94,8 +100,40 @@ class TournamentServiceTest extends KernelTestCase
         $this->assertNotEmpty($scoresDivisionB);
     }
 
-    /*public function testGetTournamentResults()
+    public function testGetTournamentResults()
     {
+        $tournament = $this->entityManager->getRepository(App\Entity\Tournament::class)->findOneBy(['name' => 'Plano']);
 
-    }*/
+        // Check if the tournament exists
+        $this->assertInstanceOf(App\Entity\Tournament::class, $tournament);
+
+        $gameResults = $this->tournamentService->getTournamentResults($tournament);
+
+        // We should get 28 qualifying games + score for every division
+        $this->assertArrayHasKey('qualifying', $gameResults);
+        $this->assertArrayHasKey('a', $gameResults['qualifying']);
+        $this->assertCount(29, $gameResults['qualifying']['a']);
+        $this->assertArrayHasKey('score', $gameResults['qualifying']['a']);
+
+        $this->assertArrayHasKey('b', $gameResults['qualifying']);
+        $this->assertCount(29, $gameResults['qualifying']['b']);
+        $this->assertArrayHasKey('score', $gameResults['qualifying']['b']);
+
+        $this->assertArrayHasKey('quarterFinal', $gameResults);
+        $this->assertCount(4, $gameResults['quarterFinal']);
+
+        $this->assertArrayHasKey('semiFinal', $gameResults);
+        $this->assertCount(2, $gameResults['semiFinal']);
+
+        $this->assertArrayHasKey('final', $gameResults);
+        $this->assertCount(2, $gameResults['final']);
+
+        $this->assertArrayHasKey('tournamentResults', $gameResults);
+        $this->assertCount(4, $gameResults['tournamentResults']);
+
+        // Check if the champion was winner in all stages and second team lost only on final
+        $tournamentResults = $gameResults['tournamentResults'];
+
+        $this->assertStageWinners($gameResults, $tournamentResults);
+    }
 }
