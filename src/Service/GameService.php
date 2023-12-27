@@ -5,6 +5,7 @@ namespace App\Service;
 use App\Entity\Game;
 use App\Entity\Tournament;
 use App\Entity\Team;
+use App\Repository\TeamRepository;
 use App\Repository\QualifyingScoreRepository;
 
 use Doctrine\ORM\EntityManagerInterface;
@@ -12,18 +13,22 @@ use Doctrine\ORM\EntityManagerInterface;
 class GameService
 {
     private QualifyingScoreRepository $qualifyingScoreRepository;
+    private TeamRepository $teamRepository;
     private EntityManagerInterface $entityManager;
 
-    public function __construct(EntityManagerInterface $entityManager, QualifyingScoreRepository $qualifyingScoreRepository)
+    public function __construct(EntityManagerInterface $entityManager, QualifyingScoreRepository $qualifyingScoreRepository, TeamRepository $teamRepository)
     {
         $this->qualifyingScoreRepository = $qualifyingScoreRepository;
+        $this->teamRepository = $teamRepository;
         $this->entityManager = $entityManager;
     }
 
-    public function playQualifyingMatches(array $teams, Tournament $tournament): array
+    public function playQualifyingMatches(string $divisionType, Tournament $tournament): array
     {
         $matchResults = [];
         $playedMatches = [];
+
+        $teams = $this->teamRepository->getTeamsByDivision($divisionType);
 
         foreach ($teams as $team1) {
             foreach ($teams as $team2) {
@@ -226,15 +231,5 @@ class GameService
             ->getResult();
 
         return !empty($existingGames);
-    }
-
-    public function getTeamsByDivision(string $divisionName, Tournament $tournament): array
-    {
-        return $this->entityManager->getRepository(Team::class)->createQueryBuilder('t')
-            ->join('t.division', 'd')
-            ->andWhere('d.name = :divisionName')
-            ->setParameter('divisionName', $divisionName)
-            ->getQuery()
-            ->getResult();
     }
 }

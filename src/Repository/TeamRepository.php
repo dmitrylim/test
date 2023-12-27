@@ -47,6 +47,16 @@ class TeamRepository extends ServiceEntityRepository
         }
     }
 
+    public function getTeamsByDivision(string $divisionName): array
+    {
+        return $this->createQueryBuilder('t')
+            ->join('t.division', 'd')
+            ->andWhere('d.name = :divisionName')
+            ->setParameter('divisionName', $divisionName)
+            ->getQuery()
+            ->getResult();
+    }
+
     // /**
     //  * @return Team[] Returns an array of Team objects
     //  */

@@ -6,6 +6,8 @@ class TournamentServiceTest extends KernelTestCase
 {
     private $entityManager;
     private $tournamentService;
+    private $qualifyingScoreRepository;
+    private $teamRepository;
 
     protected function setUp(): void
     {
@@ -14,6 +16,8 @@ class TournamentServiceTest extends KernelTestCase
         $container = self::$container;
         $this->entityManager = $container->get('doctrine')->getManager();
         $this->tournamentService = $container->get(App\Service\TournamentService::class);
+        $this->qualifyingScoreRepository = $container->get(App\Repository\QualifyingScoreRepository::class);
+        $this->teamRepository = $container->get(App\Repository\TeamRepository::class);
     }
 
     public function testStartNewTournament()
@@ -26,6 +30,18 @@ class TournamentServiceTest extends KernelTestCase
         // Check tournament existense
         $tournament = $this->tournamentService->checkTournament($tournamentName);
         $this->assertInstanceOf(App\Entity\Tournament::class, $tournament);
+
+        // Check QualifyingScores existense
+        $teams = $this->teamRepository->findAll();
+
+        foreach ($teams as $team) {
+            $score = $this->qualifyingScoreRepository->findByTeamAndTournament($team, $tournament);
+
+            $this->assertInstanceOf(App\Entity\QualifyingScore::class, $score);
+
+            // Check that QualifyingScore is 0
+            $this->assertEquals(0, $score->getScore());
+        }
     }
 
     public function testCheckTournament()
@@ -46,6 +62,14 @@ class TournamentServiceTest extends KernelTestCase
         $this->assertIsArray($existingTournament);
         $this->assertArrayHasKey('name', $existingTournament);
 
+        // Test the getTournament method with a new tournament
+        $newTournament = $this->tournamentService->getTournamentInfo('Lancaster');
+        $this->assertArrayNotHasKey('results', $newTournament);
+
+        // Test the getTournament method with a finished tournament
+        $finishedTournament = $this->tournamentService->getTournamentInfo('Grapevine');
+        $this->assertArrayHasKey('results', $finishedTournament);
+
         // Test the getTournament method with a non-existing tournament
         $nonExistingTournament = $this->tournamentService->getTournamentInfo('Non-Existing Tournament');
         $this->assertNull($nonExistingTournament);
@@ -53,7 +77,6 @@ class TournamentServiceTest extends KernelTestCase
 
     public function testGetDivisionScores()
     {
-        // Assuming there's a tournament named 'Carlsbad' in the database
         $tournamentName = 'Grapevine';
         $tournament = $this->tournamentService->checkTournament($tournamentName);
 
@@ -70,4 +93,9 @@ class TournamentServiceTest extends KernelTestCase
         $this->assertNotEmpty($scoresDivisionA);
         $this->assertNotEmpty($scoresDivisionB);
     }
+
+    /*public function testGetTournamentResults()
+    {
+
+    }*/
 }

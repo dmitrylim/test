@@ -116,11 +116,17 @@ class TournamentService
             }
         }
 
-        $teamsInDivisionA = $this->entityManager->getRepository(Team::class)->findBy(['division' => 1]);
-        $gameResults['qualifying']['a']['score'] = $this->getDivisionScores($teamsInDivisionA, $tournament);
+        // Score
+        $divisions = ['a', 'b'];
 
-        $teamsInDivisionB = $this->entityManager->getRepository(Team::class)->findBy(['division' => 2]);
-        $gameResults['qualifying']['b']['score'] = $this->getDivisionScores($teamsInDivisionB, $tournament);
+        foreach ($divisions as $division) {
+            
+        // Get teams by division
+        $teamsInDivision = $this->teamRepository->getTeamsByDivision($division);
+
+        // Calculate scores for the division
+        $gameResults['qualifying'][$division]['score'] = $this->getDivisionScores($teamsInDivision, $tournament);
+    }
 
         return $gameResults;
     }

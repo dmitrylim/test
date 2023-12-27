@@ -121,8 +121,7 @@ class IndexController extends AbstractController
             }
 
             if ($divisionType == "a" || $divisionType == "b") {
-                $teams = $this->gameService->getTeamsByDivision($divisionType, $tournament);
-                $matchResults[$divisionType] = $this->gameService->playQualifyingMatches($teams, $tournament);
+                $matchResults[$divisionType] = $this->gameService->playQualifyingMatches($divisionType, $tournament);
             } else {
                 return $this->jsonResponse([
                     'code' => 200,
