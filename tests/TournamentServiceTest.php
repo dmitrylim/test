@@ -53,7 +53,7 @@ class TournamentServiceTest extends KernelTestCase
     public function testCheckTournament()
     {
         // Test the checkTournament method with an existing tournament
-        $existingTournament = $this->tournamentService->checkTournament('Grapevine');
+        $existingTournament = $this->tournamentService->checkTournament('Temecula');
         $this->assertInstanceOf(App\Entity\Tournament::class, $existingTournament);
 
         // Test the checkTournament method with a non-existing tournament
@@ -64,16 +64,16 @@ class TournamentServiceTest extends KernelTestCase
     public function testGetTournamentInfo()
     {
         // Test the getTournament method with an existing tournament
-        $existingTournament = $this->tournamentService->getTournamentInfo('Grapevine');
+        $existingTournament = $this->tournamentService->getTournamentInfo('Temecula');
         $this->assertIsArray($existingTournament);
         $this->assertArrayHasKey('name', $existingTournament);
 
         // Test the getTournament method with a new tournament
-        $newTournament = $this->tournamentService->getTournamentInfo('Lancaster');
+        $newTournament = $this->tournamentService->getTournamentInfo('Missoula');
         $this->assertArrayNotHasKey('results', $newTournament);
 
         // Test the getTournament method with a finished tournament
-        $finishedTournament = $this->tournamentService->getTournamentInfo('Grapevine');
+        $finishedTournament = $this->tournamentService->getTournamentInfo('Temecula');
         $this->assertArrayHasKey('results', $finishedTournament);
 
         // Test the getTournament method with a non-existing tournament
@@ -83,7 +83,7 @@ class TournamentServiceTest extends KernelTestCase
 
     public function testGetDivisionScores()
     {
-        $tournamentName = 'Grapevine';
+        $tournamentName = 'Portland';
         $tournament = $this->tournamentService->checkTournament($tournamentName);
 
         // Assuming there are teams in both divisions (1 and 2)
@@ -102,7 +102,7 @@ class TournamentServiceTest extends KernelTestCase
 
     public function testGetTournamentResults()
     {
-        $tournament = $this->entityManager->getRepository(App\Entity\Tournament::class)->findOneBy(['name' => 'Plano']);
+        $tournament = $this->entityManager->getRepository(App\Entity\Tournament::class)->findOneBy(['name' => 'Sunrise']);
 
         // Check if the tournament exists
         $this->assertInstanceOf(App\Entity\Tournament::class, $tournament);
@@ -130,6 +130,20 @@ class TournamentServiceTest extends KernelTestCase
 
         $this->assertArrayHasKey('tournamentResults', $gameResults);
         $this->assertCount(4, $gameResults['tournamentResults']);
+
+        // Check if strongest "A" team played with weakest "B" team and if strongest "B" team played with weakest "A" team
+        $teamsA = $this->qualifyingScoreRepository->findTopTeamsByTournamentAndDivision($tournament->getId(), 1);
+        $teamsB = $this->qualifyingScoreRepository->findTopTeamsByTournamentAndDivision($tournament->getId(), 2);
+        $this->assertQuarterFinalTeams($teamsA, $teamsB, $gameResults);
+
+        // Check if first two winners of Quarter-final met in the next game
+        $this->assertSemiFinalTeams($gameResults);
+
+        // Check if two winners of Semi-final met in Final
+        $this->assertFinalTeams($gameResults);
+
+        // Check if the loser of Semi-final met that won in Final is on 3rd place
+        $this->assertThirdPlace($gameResults);
 
         // Check if the champion was winner in all stages and second team lost only on final
         $tournamentResults = $gameResults['tournamentResults'];

@@ -1,12 +1,17 @@
 <?php
 
+require_once __DIR__ . '/WinnerAssertionTrait.php';
+
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
 
 class GameServiceTest extends KernelTestCase
 {
+    use WinnerAssertionTrait;
+
     private $entityManager;
     private $gameService;
     private $tournamentService;
+    private $qualifyingScoreRepository;
 
     protected function setUp(): void
     {
@@ -16,6 +21,7 @@ class GameServiceTest extends KernelTestCase
         $this->entityManager = $container->get('doctrine')->getManager();
         $this->gameService = $container->get(App\Service\GameService::class);
         $this->tournamentService = $container->get(App\Service\TournamentService::class);
+        $this->qualifyingScoreRepository = $container->get(App\Repository\QualifyingScoreRepository::class);
     }
 
     public function testPlayQualifyingMatches()
@@ -24,35 +30,47 @@ class GameServiceTest extends KernelTestCase
         $tournamentName = $this->tournamentService->startNewTournament();
         $tournament = $this->tournamentService->checkTournament($tournamentName);
 
-        // Test tournament with teams from the same division
-        $teamsSameDivision = $this->entityManager->getRepository(App\Entity\Team::class)->findBy(['division' => 1]);
-        $matchResultsSameDivision = $this->gameService->playQualifyingMatches($teamsSameDivision, $tournament);
-        $this->assertNotEmpty($matchResultsSameDivision);
-
-        // Test tournament with teams from different divisions
-        $teamsDifferentDivisions = $this->entityManager->getRepository(App\Entity\Team::class)->findAll();
-
-        $this->expectException(\Exception::class);
-        $this->expectExceptionMessage('Teams from different divisions cannot play in qualifying matches.');
-
-        $this->gameService->playQualifyingMatches($teamsDifferentDivisions, $tournament);
+        // Test tournament with teams from division "a", should return 28 games and score
+        $matchResults = $this->gameService->playQualifyingMatches('a', $tournament);
+        $this->assertNotEmpty($matchResults);
+        $this->assertArrayHasKey('score', $matchResults);
+        $this->assertCount(29, $matchResults);
     }
 
     public function testPlayPlayoffGames()
     {
-        // Assuming there's a finished tournament named 'Finished Tournament' in the database
-        $tournamentName = 'Grapevine';
+        // Assuming there's a finished tournament named 'Temecula' in the database
+        $tournamentName = 'Temecula';
         $tournament = $this->tournamentService->checkTournament($tournamentName);
 
-        // Test playPlayoffGames method with a finished tournament
+        // Test if tournament has results
         $result = $this->gameService->playPlayoffGames($tournament);
         $this->assertArrayHasKey('tournamentResults', $result);
+
+        // Check if strongest "A" team played with weakest "B" team and if strongest "B" team played with weakest "A" team
+        $teamsA = $this->qualifyingScoreRepository->findTopTeamsByTournamentAndDivision($tournament->getId(), 1);
+        $teamsB = $this->qualifyingScoreRepository->findTopTeamsByTournamentAndDivision($tournament->getId(), 2);
+        $this->assertQuarterFinalTeams($teamsA, $teamsB, $result);
+
+        // Check if first two winners of Quarter-final met in the next game
+        $this->assertSemiFinalTeams($result);
+
+        // Check if two winners of Semi-final met in Final
+        $this->assertFinalTeams($result);
+
+        // Check if the loser of Semi-final met that won in Final is on 3rd place
+        $this->assertThirdPlace($result);
+
+        // Check if the champion was winner in all stages and second team lost only on final
+        $tournamentResults = $result['tournamentResults'];
+
+        $this->assertStageWinners($result, $tournamentResults);
     }
 
     public function testCreateGame()
     {
         // Assuming there's a tournament named 'Grapevine' in the database
-        $tournamentName = 'Grapevine';
+        $tournamentName = 'Portland';
         $tournament = $this->tournamentService->checkTournament($tournamentName);
 
         // Assuming there are two teams in the tournament
